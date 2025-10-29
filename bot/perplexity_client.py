@@ -85,6 +85,9 @@ Format as a single flowing article, not bullet points."""
                 logger.error(f"Raw response text: {response.text}")
                 return None
             
+            # Log the full response for debugging
+            logger.info(f"Full API response: {json.dumps(data, indent=2)}")
+            
             # Validate response structure step by step
             if not isinstance(data, dict):
                 logger.error(f"Expected dict, got {type(data)}")
@@ -97,27 +100,44 @@ Format as a single flowing article, not bullet points."""
             if not isinstance(data['choices'], list) or not data['choices']:
                 logger.error(f"'choices' is not a valid list: {data['choices']}")
                 return None
-                
-            # Extract content from first choice
+            
+            # Get the first choice - FIXED VALIDATION
             choice = data['choices']
-            if not isinstance(choice, dict) or 'message' not in choice:
-                logger.error(f"Invalid choice structure: {choice}")
+            logger.info(f"Choice structure: {choice}")
+            
+            # The choice is a dict, extract message
+            if not isinstance(choice, dict):
+                logger.error(f"Choice is not a dict: {type(choice)}")
+                return None
+                
+            if 'message' not in choice:
+                logger.error(f"No 'message' field in choice. Available keys: {list(choice.keys())}")
                 return None
                 
             message = choice['message']
-            if not isinstance(message, dict) or 'content' not in message:
-                logger.error(f"Invalid message structure: {message}")
+            logger.info(f"Message structure: {message}")
+            
+            if not isinstance(message, dict):
+                logger.error(f"Message is not a dict: {type(message)}")
+                return None
+                
+            if 'content' not in message:
+                logger.error(f"No 'content' field in message. Available keys: {list(message.keys())}")
                 return None
                 
             content = message['content']
+            
             if not isinstance(content, str):
                 logger.error(f"Content is not a string: {type(content)}")
                 return None
                 
-            logger.info(f"Received crypto news content ({len(content)} chars)")
+            logger.info(f"Successfully extracted content ({len(content)} chars)")
             
             # Clean and validate content
             clean_content = content.strip()
+            
+            # Remove any citation numbers like  that might appear
+            clean_content = re.sub(r'\[\d+\]', '', clean_content)
             
             # Ensure content ends with the required hashtags
             required_tags = "#CryptoNews #MarketOverview"
@@ -135,6 +155,7 @@ Format as a single flowing article, not bullet points."""
                 clean_content = f"{truncated} {required_tags}"
             
             # Generate crypto-themed image
+            logger.info("Generating crypto-themed image...")
             image_url = self._generate_crypto_image()
             
             result = {
@@ -143,7 +164,8 @@ Format as a single flowing article, not bullet points."""
                 'char_count': len(clean_content)
             }
             
-            logger.info(f"Final content: {len(clean_content)} characters")
+            logger.info(f"Final content ready: {len(clean_content)} characters")
+            logger.info(f"Content preview: {clean_content[:100]}...")
             return result
             
         except requests.exceptions.HTTPError as e:
@@ -188,7 +210,8 @@ Format as a single flowing article, not bullet points."""
                         logger.info(f"Generated crypto image with term: {term}")
                         return image_url
                         
-                except requests.RequestException:
+                except requests.RequestException as e:
+                    logger.debug(f"Failed to get image for term {term}: {e}")
                     continue
             
             # Method 2: Fallback to Picsum (Lorem Picsum) with fixed image
@@ -204,7 +227,8 @@ Format as a single flowing article, not bullet points."""
                     if response.status_code == 200:
                         logger.info(f"Using fallback image: {url}")
                         return url
-                except requests.RequestException:
+                except requests.RequestException as e:
+                    logger.debug(f"Failed fallback image {url}: {e}")
                     continue
                     
             # Method 3: Static crypto-themed image (most reliable)
@@ -215,7 +239,8 @@ Format as a single flowing article, not bullet points."""
                 if response.status_code == 200:
                     logger.info("Using static crypto image")
                     return static_crypto_image
-            except requests.RequestException:
+            except requests.RequestException as e:
+                logger.debug(f"Failed static image: {e}")
                 pass
                 
         except Exception as e:
