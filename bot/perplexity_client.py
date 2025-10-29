@@ -1,5 +1,5 @@
 """
-Perplexity API client for fetching daily content.
+Perplexity API client for fetching daily crypto content with image generation.
 """
 
 import requests
@@ -7,6 +7,7 @@ import json
 import logging
 import re
 from typing import Dict, Optional
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -16,45 +17,228 @@ class PerplexityClient:
         self.base_url = "https://api.perplexity.ai/chat/completions"
         self.headers = {
             "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "Accept": "application/json"
         }
         
-    def get_daily_content(self, topic: str) -> Optional[Dict]:
+    def get_crypto_news_content(self) -> Optional[Dict]:
         """
-        Get daily content from Perplexity API.
-        Returns dict with 'text' and optionally 'image_url'.
+        Get today's crypto market news and analysis from Perplexity API.
+        Returns dict with 'text' and 'image_url'.
         """
         try:
-            # Create a focused prompt that encourages both text and image suggestions
-            prompt = f"""Write an engaging, informative post about {topic}. 
+            # Get today's date for context
+            today = datetime.now().strftime("%B %d, %Y")
             
-            Requirements:
-            - Maximum 900 characters (including spaces)
-            - Include interesting facts or recent developments
-            - Suggest a relevant image search term at the end in format: [IMAGE: search_term]
-            - Make it engaging and shareable
-            - Use emojis sparingly but effectively
-            
-            Topic: {topic}"""
-            
+            # Optimized prompt for crypto news with strict character limit
+            prompt = f"""Write a comprehensive crypto market summary for {today}. 
+
+REQUIREMENTS:
+- Exactly 950 characters or less (including spaces)
+- Focus on: Bitcoin, Ethereum, major altcoins, market trends, economic events
+- Include specific prices, percentages, and market cap changes
+- Mention any breaking news, regulatory updates, or institutional movements
+- Write in engaging, informative style
+- End with exactly: #CryptoNews #MarketOverview
+- Include relevant technical analysis if applicable
+
+Format as a single flowing article, not bullet points."""
+
             payload = {
-                "model": "sonar-pro",  # Using PRO model
+                "model": "sonar-pro",  # Using PRO model for real-time data
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You are a content creator who writes engaging, factual posts with image suggestions."
+                        "content": "You are a professional crypto market analyst writing daily market summaries. Provide accurate, current market data and analysis. Always stay within the exact character limit specified."
                     },
                     {
                         "role": "user", 
                         "content": prompt
                     }
                 ],
-                "max_tokens": 500,
-                "temperature": 0.7,
+                "max_tokens": 400,  # Reduced to ensure concise response
+                "temperature": 0.3,  # Lower for more factual content
                 "stream": False
             }
             
-            logger.info("Making request to Perplexity API...")
+            logger.info("Making request to Perplexity API for crypto news...")
+            response = requests.post(
+                self.base_url,
+                headers=self.headers,
+                json=payload,
+                timeout=45  # Increased timeout for real-time data
+            )
+            
+            # Log response details for debugging
+            logger.info(f"Response status code: {response.status_code}")
+            
+            if response.status_code != 200:
+                logger.error(f"API request failed with status {response.status_code}")
+                logger.error(f"Response text: {response.text}")
+                return None
+            
+            # Parse JSON response with comprehensive error handling
+            try:
+                data = response.json()
+            except json.JSONDecodeError as e:
+                logger.error(f"Failed to parse JSON response: {e}")
+                logger.error(f"Raw response text: {response.text}")
+                return None
+            
+            # Validate response structure step by step
+            if not isinstance(data, dict):
+                logger.error(f"Expected dict, got {type(data)}")
+                return None
+                
+            if 'choices' not in data:
+                logger.error(f"No 'choices' field in response. Available keys: {list(data.keys())}")
+                return None
+                
+            if not isinstance(data['choices'], list) or not data['choices']:
+                logger.error(f"'choices' is not a valid list: {data['choices']}")
+                return None
+                
+            # Extract content from first choice
+            choice = data['choices']
+            if not isinstance(choice, dict) or 'message' not in choice:
+                logger.error(f"Invalid choice structure: {choice}")
+                return None
+                
+            message = choice['message']
+            if not isinstance(message, dict) or 'content' not in message:
+                logger.error(f"Invalid message structure: {message}")
+                return None
+                
+            content = message['content']
+            if not isinstance(content, str):
+                logger.error(f"Content is not a string: {type(content)}")
+                return None
+                
+            logger.info(f"Received crypto news content ({len(content)} chars)")
+            
+            # Clean and validate content
+            clean_content = content.strip()
+            
+            # Ensure content ends with the required hashtags
+            required_tags = "#CryptoNews #MarketOverview"
+            if not clean_content.endswith(required_tags):
+                # Remove any existing hashtags and add the required ones
+                clean_content = re.sub(r'#\w+\s*#\w+\s*$', '', clean_content).strip()
+                clean_content = f"{clean_content} {required_tags}"
+            
+            # Validate character limit (1000 max, targeting 950)
+            if len(clean_content) > 1000:
+                logger.warning(f"Content too long ({len(clean_content)} chars), truncating...")
+                # Truncate while preserving hashtags
+                max_content_length = 1000 - len(required_tags) - 1  # -1 for space
+                truncated = clean_content[:max_content_length].rsplit(' ', 1)
+                clean_content = f"{truncated} {required_tags}"
+            
+            # Generate crypto-themed image
+            image_url = self._generate_crypto_image()
+            
+            result = {
+                'text': clean_content,
+                'image_url': image_url,
+                'char_count': len(clean_content)
+            }
+            
+            logger.info(f"Final content: {len(clean_content)} characters")
+            return result
+            
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"HTTP error: {e}")
+            if e.response:
+                logger.error(f"Response text: {e.response.text}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Request error: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error in Perplexity client: {str(e)}")
+            logger.error(f"Error type: {type(e)}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            return None
+    
+    def _generate_crypto_image(self) -> Optional[str]:
+        """
+        Generate a cryptocurrency-themed image URL.
+        Uses multiple fallback methods for reliability.
+        """
+        try:
+            # Method 1: Unsplash with crypto-specific terms
+            crypto_terms = [
+                "cryptocurrency+trading+charts",
+                "bitcoin+financial+market",
+                "blockchain+technology+finance", 
+                "crypto+market+analysis",
+                "digital+currency+exchange",
+                "financial+trading+screen"
+            ]
+            
+            # Try each term until we find a working image
+            for term in crypto_terms:
+                try:
+                    image_url = f"https://source.unsplash.com/1200x800/?{term}"
+                    
+                    # Test if image is accessible
+                    response = requests.head(image_url, timeout=10, allow_redirects=True)
+                    if response.status_code == 200:
+                        logger.info(f"Generated crypto image with term: {term}")
+                        return image_url
+                        
+                except requests.RequestException:
+                    continue
+            
+            # Method 2: Fallback to Picsum (Lorem Picsum) with fixed image
+            fallback_urls = [
+                "https://picsum.photos/1200/800?random=crypto1",
+                "https://picsum.photos/1200/800?random=finance1", 
+                "https://picsum.photos/1200/800?random=market1"
+            ]
+            
+            for url in fallback_urls:
+                try:
+                    response = requests.head(url, timeout=10)
+                    if response.status_code == 200:
+                        logger.info(f"Using fallback image: {url}")
+                        return url
+                except requests.RequestException:
+                    continue
+                    
+            # Method 3: Static crypto-themed image (most reliable)
+            static_crypto_image = "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
+            
+            try:
+                response = requests.head(static_crypto_image, timeout=10)
+                if response.status_code == 200:
+                    logger.info("Using static crypto image")
+                    return static_crypto_image
+            except requests.RequestException:
+                pass
+                
+        except Exception as e:
+            logger.warning(f"Error generating crypto image: {str(e)}")
+            
+        # If all methods fail, return None (bot will send text-only)
+        logger.warning("All image generation methods failed, sending text-only")
+        return None
+        
+    def test_connection(self) -> bool:
+        """Test the API connection and key validity."""
+        try:
+            payload = {
+                "model": "sonar-pro",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Test connection - respond with 'OK'"
+                    }
+                ],
+                "max_tokens": 10
+            }
+            
             response = requests.post(
                 self.base_url,
                 headers=self.headers,
@@ -62,71 +246,25 @@ class PerplexityClient:
                 timeout=30
             )
             
-            response.raise_for_status()
-            data = response.json()
+            logger.info(f"Test connection status: {response.status_code}")
             
-            if 'choices' not in data or not data['choices']:
-                logger.error("No choices in Perplexity response")
-                return None
-                
-            content = data['choices']['message']['content']
-            logger.info(f"Received content from Perplexity ({len(content)} chars)")
-            
-            # Extract image suggestion if present
-            image_search_term = self._extract_image_suggestion(content)
-            
-            # Clean content by removing image suggestion
-            clean_content = re.sub(r'\[IMAGE:.*?\]', '', content).strip()
-            
-            result = {
-                'text': clean_content,
-                'image_search_term': image_search_term
-            }
-            
-            # If we have an image search term, try to get an image URL
-            if image_search_term:
-                image_url = self._get_image_url(image_search_term)
-                if image_url:
-                    result['image_url'] = image_url
-                    
-            return result
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request error: {str(e)}")
-            return None
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON decode error: {str(e)}")
-            return None
-        except Exception as e:
-            logger.error(f"Unexpected error in Perplexity client: {str(e)}")
-            return None
-            
-    def _extract_image_suggestion(self, content: str) -> Optional[str]:
-        """Extract image search term from content."""
-        match = re.search(r'\[IMAGE:\s*([^\]]+)\]', content, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-        return None
-        
-    def _get_image_url(self, search_term: str) -> Optional[str]:
-        """
-        Get a relevant image URL for the search term.
-        Using a simple approach with Unsplash API (free tier).
-        """
-        try:
-            # Using Unsplash for free stock photos
-            unsplash_url = "https://source.unsplash.com/800x600/"
-            # Clean search term for URL
-            clean_term = search_term.replace(' ', '+').replace(',', '')
-            image_url = f"{unsplash_url}?{clean_term}"
-            
-            # Verify the URL returns an image
-            response = requests.head(image_url, timeout=10)
             if response.status_code == 200:
-                logger.info(f"Found image for: {search_term}")
-                return image_url
-                
-        except Exception as e:
-            logger.warning(f"Could not get image for '{search_term}': {str(e)}")
+                data = response.json()
+                if 'choices' in data and data['choices']:
+                    logger.info("Perplexity API connection successful")
+                    return True
             
-        return None
+            logger.error(f"Test connection failed: {response.text}")
+            return False
+            
+        except Exception as e:
+            logger.error(f"Test connection error: {str(e)}")
+            return False
+            
+    def get_daily_content(self, topic: str) -> Optional[Dict]:
+        """
+        Compatibility method for existing code.
+        Routes to crypto news function for consistent behavior.
+        """
+        logger.info(f"Routing topic '{topic}' to crypto news generation")
+        return self.get_crypto_news_content()
