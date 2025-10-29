@@ -1,44 +1,10 @@
 """
-Utility functions for the bot.
+Utility functions for the crypto bot.
 """
 
-import random
+import re
 from datetime import datetime
 from typing import List
-
-def generate_daily_topic() -> str:
-    """Generate a topic for today's content based on day of week and trends."""
-    
-    # Topic categories with engaging subjects
-    topics = {
-        'monday': [
-            "Summarize today's top global news about crypto market. Include major economic events, and highlight any breaking news about future events, at the end of the article include these two hashtags #CryptoNews #MarketOverview" 
-        ],
-        'tuesday': [
-            "Summarize today's top global news about crypto market. Include major economic events, and highlight any breaking news about future events, at the end of the article include these two hashtags #CryptoNews #MarketOverview"
-        ],
-        'wednesday': [
-            "Summarize today's top global news about crypto market. Include major economic events, and highlight any breaking news about future events, at the end of the article include these two hashtags #CryptoNews #MarketOverview"
-        ],
-        'thursday': [
-            "Summarize today's top global news about crypto market. Include major economic events, and highlight any breaking news about future events, at the end of the article include these two hashtags #CryptoNews #MarketOverview"
-        ],
-        'friday': [
-            "Summarize today's top global news about crypto market. Include major economic events, and highlight any breaking news about future events, at the end of the article include these two hashtags #CryptoNews #MarketOverview"
-        ]
-    }
-    
-    # Get current day
-    current_day = datetime.now().strftime('%A').lower()
-    
-    # Default to general topics if day not found
-    if current_day not in topics:
-        current_day = 'monday'
-        
-    # Select random topic for the day
-    selected_topic = random.choice(topics[current_day])
-    
-    return selected_topic
 
 def validate_content_length(text: str, max_length: int = 1000) -> bool:
     """Validate that content is within character limit."""
@@ -59,15 +25,62 @@ def truncate_text(text: str, max_length: int = 1000) -> str:
     return truncated + "..."
 
 def format_for_telegram(text: str) -> str:
-    """Format text for Telegram with basic HTML formatting."""
-    # Add some basic formatting
-    # This is a simple implementation - you can expand it
-    formatted = text
+    """Format text for Telegram with enhanced formatting for crypto content."""
+    formatted = text.strip()
     
-    # Make first line bold if it looks like a title
-    lines = formatted.split('\n')
-    if lines and len(lines) < 100:
-        lines = f"<b>{lines}</b>"
-        formatted = '\n'.join(lines)
+    # Enhanced formatting for crypto content
+    # Bold currency symbols and prices
+    formatted = re.sub(r'\$([0-9,]+\.?[0-9]*)', r'<b>$\1</b>', formatted)
+    formatted = re.sub(r'(Bitcoin|BTC|Ethereum|ETH|Binance|BNB)', r'<b>\1</b>', formatted)
+    
+    # Format percentages
+    formatted = re.sub(r'([+-]?[0-9]+\.?[0-9]*%)', r'<i>\1</i>', formatted)
+    
+    # Make hashtags stand out (though they should already be at the end)
+    formatted = re.sub(r'(#\w+)', r'<b>\1</b>', formatted)
     
     return formatted
+
+def get_crypto_terms() -> List[str]:
+    """Get list of crypto-related terms for image generation."""
+    return [
+        "cryptocurrency market analysis",
+        "bitcoin trading charts", 
+        "blockchain technology finance",
+        "crypto exchange dashboard",
+        "digital currency trends",
+        "financial market data",
+        "trading indicators crypto",
+        "bitcoin price chart",
+        "ethereum market analysis",
+        "crypto market overview"
+    ]
+
+def clean_api_response(text: str) -> str:
+    """Clean API response text for better formatting."""
+    # Remove markdown formatting that might interfere
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Remove bold markdown
+    text = re.sub(r'\*(.*?)\*', r'\1', text)      # Remove italic markdown
+    
+    # Ensure single spacing
+    text = re.sub(r'\s+', ' ', text)
+    
+    # Clean up any extra punctuation
+    text = re.sub(r'\.{2,}', '.', text)
+    
+    return text.strip()
+
+def validate_crypto_content(content: str) -> bool:
+    """Validate that content contains relevant crypto information."""
+    crypto_keywords = [
+        'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency', 
+        'blockchain', 'market', 'price', 'trading', 'exchange', 'digital currency'
+    ]
+    
+    content_lower = content.lower()
+    return any(keyword in content_lower for keyword in crypto_keywords)
+
+def get_current_date_context() -> str:
+    """Get current date context for crypto news."""
+    now = datetime.now()
+    return f"{now.strftime('%B %d, %Y')} ({now.strftime('%A')})"
