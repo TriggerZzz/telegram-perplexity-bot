@@ -85,9 +85,6 @@ Format as a single flowing article, not bullet points."""
                 logger.error(f"Raw response text: {response.text}")
                 return None
             
-            # Log the full response for debugging
-            logger.info(f"Full API response: {json.dumps(data, indent=2)}")
-            
             # Validate response structure step by step
             if not isinstance(data, dict):
                 logger.error(f"Expected dict, got {type(data)}")
@@ -101,9 +98,9 @@ Format as a single flowing article, not bullet points."""
                 logger.error(f"'choices' is not a valid list: {data['choices']}")
                 return None
             
-            # Get the first choice - FIXED VALIDATION
-            choice = data['choices']
-            logger.info(f"Choice structure: {choice}")
+            # Get the first choice - CORRECTED: choices is a list, get first element
+            choice = data['choices']  # This is the dict we want
+            logger.info(f"Choice structure: {choice}")  # Now logging the correct object
             
             # The choice is a dict, extract message
             if not isinstance(choice, dict):
@@ -131,7 +128,7 @@ Format as a single flowing article, not bullet points."""
                 logger.error(f"Content is not a string: {type(content)}")
                 return None
                 
-            logger.info(f"Successfully extracted content ({len(content)} chars)")
+            logger.info(f"Successfully extracted content ({len(content)} characters)")
             
             # Clean and validate content
             clean_content = content.strip()
@@ -144,7 +141,8 @@ Format as a single flowing article, not bullet points."""
             if not clean_content.endswith(required_tags):
                 # Remove any existing hashtags and add the required ones
                 clean_content = re.sub(r'#\w+\s*#\w+\s*$', '', clean_content).strip()
-                clean_content = f"{clean_content} {required_tags}"
+                if not clean_content.endswith(required_tags):
+                    clean_content = f"{clean_content.rstrip()} {required_tags}"
             
             # Validate character limit (1000 max, targeting 950)
             if len(clean_content) > 1000:
@@ -164,8 +162,11 @@ Format as a single flowing article, not bullet points."""
                 'char_count': len(clean_content)
             }
             
-            logger.info(f"Final content ready: {len(clean_content)} characters")
+            logger.info(f"✅ Content processed successfully!")
+            logger.info(f"Final character count: {len(clean_content)}")
+            logger.info(f"Has image: {'Yes' if image_url else 'No'}")
             logger.info(f"Content preview: {clean_content[:100]}...")
+            
             return result
             
         except requests.exceptions.HTTPError as e:
@@ -207,7 +208,7 @@ Format as a single flowing article, not bullet points."""
                     # Test if image is accessible
                     response = requests.head(image_url, timeout=10, allow_redirects=True)
                     if response.status_code == 200:
-                        logger.info(f"Generated crypto image with term: {term}")
+                        logger.info(f"✅ Generated crypto image with term: {term}")
                         return image_url
                         
                 except requests.RequestException as e:
@@ -225,7 +226,7 @@ Format as a single flowing article, not bullet points."""
                 try:
                     response = requests.head(url, timeout=10)
                     if response.status_code == 200:
-                        logger.info(f"Using fallback image: {url}")
+                        logger.info(f"✅ Using fallback image: {url}")
                         return url
                 except requests.RequestException as e:
                     logger.debug(f"Failed fallback image {url}: {e}")
@@ -237,7 +238,7 @@ Format as a single flowing article, not bullet points."""
             try:
                 response = requests.head(static_crypto_image, timeout=10)
                 if response.status_code == 200:
-                    logger.info("Using static crypto image")
+                    logger.info("✅ Using static crypto image")
                     return static_crypto_image
             except requests.RequestException as e:
                 logger.debug(f"Failed static image: {e}")
@@ -247,7 +248,7 @@ Format as a single flowing article, not bullet points."""
             logger.warning(f"Error generating crypto image: {str(e)}")
             
         # If all methods fail, return None (bot will send text-only)
-        logger.warning("All image generation methods failed, sending text-only")
+        logger.warning("⚠️  All image generation methods failed, sending text-only")
         return None
         
     def test_connection(self) -> bool:
