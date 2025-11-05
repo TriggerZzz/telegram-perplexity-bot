@@ -1,12 +1,12 @@
 """
-Perplexity API client - COMPLETE WORKING VERSION
-Handles the exact API format you're experiencing.
+Enhanced Perplexity API client with improved formatting and dynamic image generation.
 """
 
 import requests
 import json
 import logging
 import re
+import hashlib
 from typing import Dict, Optional
 from datetime import datetime
 
@@ -23,57 +23,78 @@ class PerplexityClient:
         }
         
     def get_crypto_news_content(self) -> Optional[Dict]:
-        """Get crypto market news - SIMPLIFIED AND WORKING."""
+        """Get crypto market news with enhanced formatting."""
         try:
-            today = datetime.now().strftime("%B %d, %Y")
+            today = datetime.now()
+            formatted_date = today.strftime("%B %d, %Y")
             
-            prompt = f"""Write a crypto market summary for {today}. Keep it under 900 characters including spaces. Focus on Bitcoin, Ethereum, major altcoins, and market trends. End with: #CryptoNews #MarketOverview"""
+            # Enhanced prompt for better structure
+            prompt = f"""Write a crypto market analysis for {formatted_date}. Structure it as follows:
+            
+            1. Start with a compelling title about today's crypto market
+            2. Write 3-4 bullet points covering:
+               - Bitcoin and Ethereum price movements with percentages
+               - Major altcoin performance and trends
+               - Market sentiment and key economic factors
+               - Any breaking news or regulatory updates
+            
+            Keep total length under 850 characters including spaces.
+            Use engaging, professional financial language.
+            End with: #CryptoNews #MarketOverview"""
 
             payload = {
                 "model": "sonar-pro",
                 "messages": [
+                    {
+                        "role": "system",
+                        "content": "You are a professional crypto market analyst. Write concise, engaging market summaries with specific data and percentages. Focus on actionable insights."
+                    },
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 300,
-                "temperature": 0.3,
+                "max_tokens": 350,
+                "temperature": 0.4,
                 "stream": False
             }
             
-            logger.info("📡 Requesting crypto news from Perplexity...")
+            logger.info("📡 Requesting enhanced crypto news from Perplexity...")
             response = requests.post(self.base_url, headers=self.headers, json=payload, timeout=30)
             
             if response.status_code != 200:
                 logger.error(f"❌ API failed: {response.status_code}")
-                return self._create_fallback_content()
+                return self._create_enhanced_fallback_content(formatted_date)
             
             try:
                 data = response.json()
             except:
                 logger.error("❌ JSON parse failed")
-                return self._create_fallback_content()
+                return self._create_enhanced_fallback_content(formatted_date)
             
-            # SIMPLE extraction - handle any format
+            # Extract content
             content = self._extract_content_simple(data)
             
             if not content:
                 logger.warning("⚠️ No content extracted, using fallback")
-                return self._create_fallback_content()
+                return self._create_enhanced_fallback_content(formatted_date)
             
-            # Clean and process
-            clean_content = self._clean_content(content)
+            # Format content with new structure
+            formatted_content = self._format_content_enhanced(content, formatted_date)
+            
+            # Generate unique image for this content
+            image_url = self._generate_unique_crypto_image(formatted_content)
             
             result = {
-                'text': clean_content,
-                'image_url': self._get_simple_image(),
-                'char_count': len(clean_content)
+                'text': formatted_content,
+                'image_url': image_url,
+                'char_count': len(formatted_content)
             }
             
-            logger.info(f"✅ SUCCESS: {len(clean_content)} chars")
+            logger.info(f"✅ Enhanced content ready: {len(formatted_content)} chars")
             return result
             
         except Exception as e:
             logger.error(f"💥 Error: {str(e)}")
-            return self._create_fallback_content()
+            today_str = datetime.now().strftime("%B %d, %Y")
+            return self._create_enhanced_fallback_content(today_str)
     
     def _extract_content_simple(self, data: dict) -> str:
         """Simple content extraction that works with any format."""
@@ -82,7 +103,6 @@ class PerplexityClient:
             if 'choices' in data and data['choices']:
                 choice = data['choices']
                 
-                # Handle if choice is dict
                 if isinstance(choice, dict):
                     if 'message' in choice and 'content' in choice['message']:
                         content = choice['message']['content']
@@ -90,7 +110,6 @@ class PerplexityClient:
                             logger.info("✅ Found content in standard format")
                             return content.strip()
                 
-                # Handle if choice is list (your case)
                 elif isinstance(choice, list) and choice:
                     for item in choice:
                         if isinstance(item, dict):
@@ -100,7 +119,7 @@ class PerplexityClient:
                                     logger.info("✅ Found content in list format")
                                     return content.strip()
             
-            # Method 2: Search anywhere for content
+            # Recursive search fallback
             def find_content(obj):
                 if isinstance(obj, str) and len(obj) > 20:
                     return obj
@@ -120,62 +139,193 @@ class PerplexityClient:
             
             content = find_content(data)
             if content:
-                logger.info("✅ Found content via search")
+                logger.info("✅ Found content via recursive search")
                 return content.strip()
             
-            logger.warning("⚠️ No content found")
             return ""
             
         except Exception as e:
             logger.error(f"💥 Extract error: {str(e)}")
             return ""
     
-    def _clean_content(self, content: str) -> str:
-        """Clean and format content."""
+    def _format_content_enhanced(self, content: str, date: str) -> str:
+        """Format content with title, bullet points, and proper spacing."""
         try:
-            # Remove citations  etc
-            clean = re.sub(r'\[\d+\]', '', content)
+            # Clean citations and extra formatting
+            clean_content = re.sub(r'\[\d+\]', '', content)
+            clean_content = re.sub(r'\*\*(.*?)\*\*', r'\1', clean_content)
+            clean_content = re.sub(r'\*(.*?)\*', r'\1', clean_content)
+            clean_content = re.sub(r'\s+', ' ', clean_content).strip()
             
-            # Clean multiple spaces
-            clean = re.sub(r'\s+', ' ', clean).strip()
+            # Extract title if present or create one
+            lines = clean_content.split('\n')
+            title = ""
+            body_content = clean_content
             
-            # Ensure hashtags
-            if not clean.endswith('#CryptoNews #MarketOverview'):
-                clean = re.sub(r'#\w+\s*#\w+\s*$', '', clean).strip()
-                clean = f"{clean} #CryptoNews #MarketOverview"
+            # Check if first line looks like a title
+            if lines and len(lines) > 1:
+                first_line = lines.strip()
+                if len(first_line) < 100 and not first_line.startswith('•') and not first_line.startswith('-'):
+                    title = first_line
+                    body_content = '\n'.join(lines[1:]).strip()
             
-            # Ensure under 1000 chars
-            if len(clean) > 1000:
-                clean = clean[:950].rsplit(' ', 1) + " #CryptoNews #MarketOverview"
+            # If no title found, create one
+            if not title:
+                title = f"🚀 Crypto Market Update"
             
-            return clean
+            # Create formatted structure
+            formatted_lines = [
+                f"📈 **{title}**",
+                f"📅 *{date}*",
+                "",  # Empty line after header
+            ]
+            
+            # Convert content to bullet points
+            bullet_content = self._convert_to_bullets(body_content)
+            formatted_lines.extend(bullet_content)
+            
+            # Add spacing before hashtags
+            formatted_lines.extend([
+                "",  # Empty line
+                "",  # Second empty line
+                "#CryptoNews #MarketOverview"
+            ])
+            
+            result = '\n'.join(formatted_lines)
+            
+            # Ensure under character limit
+            if len(result) > 1000:
+                # Truncate bullet points while keeping structure
+                header_size = len(formatted_lines) + len(formatted_lines) + len(formatted_lines) + 6  # +6 for newlines
+                footer_size = 50  # For spacing and hashtags
+                available_space = 1000 - header_size - footer_size
+                
+                truncated_bullets = self._truncate_bullets(bullet_content, available_space)
+                
+                result_lines = formatted_lines[:3] + truncated_bullets + ["", "", "#CryptoNews #MarketOverview"]
+                result = '\n'.join(result_lines)
+            
+            return result
             
         except Exception as e:
-            logger.error(f"💥 Clean error: {str(e)}")
-            return content[:900] + " #CryptoNews #MarketOverview"
+            logger.error(f"💥 Format error: {str(e)}")
+            return f"📈 **Crypto Market Update**\n📅 *{date}*\n\n• Market analysis unavailable\n\n\n#CryptoNews #MarketOverview"
     
-    def _create_fallback_content(self) -> Dict:
-        """Create fallback content when API fails."""
-        today = datetime.now().strftime("%B %d, %Y")
+    def _convert_to_bullets(self, content: str) -> list:
+        """Convert content to bullet point format."""
+        try:
+            # Remove existing hashtags
+            content = re.sub(r'#\w+\s*#\w+\s*$', '', content).strip()
+            
+            # Split into sentences and create bullets
+            sentences = [s.strip() for s in content.replace('.', '.|').split('|') if s.strip()]
+            
+            bullets = []
+            for sentence in sentences:
+                if sentence and len(sentence) > 10:
+                    # Clean sentence
+                    sentence = sentence.rstrip('.').strip()
+                    if sentence:
+                        bullets.append(f"• {sentence}")
+            
+            # Ensure we have at least 2-3 bullet points
+            if len(bullets) < 2:
+                bullets = [
+                    "• Bitcoin and Ethereum show mixed trading signals",
+                    "• Altcoin markets display varied performance patterns", 
+                    "• Market sentiment remains cautious amid economic developments"
+                ]
+            
+            return bullets
+            
+        except Exception as e:
+            logger.error(f"💥 Bullet conversion error: {str(e)}")
+            return ["• Crypto market analysis in progress"]
+    
+    def _truncate_bullets(self, bullets: list, max_chars: int) -> list:
+        """Truncate bullets to fit within character limit."""
+        result = []
+        current_length = 0
         
-        fallback_text = f"""Crypto markets continue to evolve on {today}. Bitcoin maintains its position as the leading digital asset while Ethereum shows ongoing development activity. Major altcoins display mixed performance as the market navigates current economic conditions. Traders remain watchful of regulatory developments and institutional adoption trends affecting the broader cryptocurrency landscape. #CryptoNews #MarketOverview"""
+        for bullet in bullets:
+            if current_length + len(bullet) + 1 <= max_chars:  # +1 for newline
+                result.append(bullet)
+                current_length += len(bullet) + 1
+            else:
+                break
+        
+        # Ensure at least one bullet
+        if not result and bullets:
+            result = [bullets[:max_chars-3] + "..."]
+        
+        return result
+    
+    def _generate_unique_crypto_image(self, content: str) -> str:
+        """Generate a unique crypto image based on content hash."""
+        try:
+            # Create hash from content for uniqueness
+            content_hash = hashlib.md5(content.encode()).hexdigest()[:8]
+            
+            # Multiple image sources with rotation based on content
+            crypto_images = [
+                f"https://source.unsplash.com/1200x800/?cryptocurrency,trading,{content_hash}",
+                f"https://source.unsplash.com/1200x800/?bitcoin,market,analysis",
+                f"https://source.unsplash.com/1200x800/?blockchain,finance,charts",
+                f"https://picsum.photos/1200/800?random={content_hash}",
+                "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop",
+                "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=1200&h=800&fit=crop",
+                "https://images.unsplash.com/photo-1616499370260-485b3e5ed653?w=1200&h=800&fit=crop"
+            ]
+            
+            # Select image based on hash to ensure different images
+            hash_int = int(content_hash, 16)
+            selected_image = crypto_images[hash_int % len(crypto_images)]
+            
+            # Test image availability
+            try:
+                response = requests.head(selected_image, timeout=10)
+                if response.status_code == 200:
+                    logger.info(f"✅ Generated unique image: {selected_image}")
+                    return selected_image
+            except:
+                pass
+            
+            # Fallback to reliable static image
+            return "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
+            
+        except Exception as e:
+            logger.error(f"💥 Image generation error: {str(e)}")
+            return "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
+    
+    def _create_enhanced_fallback_content(self, date: str) -> Dict:
+        """Create enhanced fallback content with proper formatting."""
+        fallback_bullets = [
+            "• Bitcoin continues consolidation in key resistance zones",
+            "• Ethereum shows resilience amid network development progress", 
+            "• Altcoin sectors display mixed performance across categories",
+            "• Market participants monitor regulatory developments closely"
+        ]
+        
+        formatted_content = f"""📈 **Crypto Market Analysis**
+📅 *{date}*
+
+{chr(10).join(fallback_bullets)}
+
+
+#CryptoNews #MarketOverview"""
         
         return {
-            'text': fallback_text,
-            'image_url': self._get_simple_image(),
-            'char_count': len(fallback_text)
+            'text': formatted_content,
+            'image_url': self._generate_unique_crypto_image(formatted_content),
+            'char_count': len(formatted_content)
         }
-    
-    def _get_simple_image(self) -> str:
-        """Get a reliable crypto image."""
-        return "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
     
     def test_connection(self) -> bool:
         """Simple connection test."""
         try:
             payload = {
                 "model": "sonar-pro",
-                "messages": [{"role": "user", "content": "Hi"}],
+                "messages": [{"role": "user", "content": "Test"}],
                 "max_tokens": 10
             }
             response = requests.post(self.base_url, headers=self.headers, json=payload, timeout=20)
@@ -183,8 +333,6 @@ class PerplexityClient:
             if response.status_code == 200:
                 logger.info("✅ Perplexity API connection successful")
                 return True
-            
-            logger.error(f"❌ Test failed: {response.status_code}")
             return False
             
         except Exception as e:
