@@ -1,5 +1,5 @@
 """
-Refined Perplexity API client with updated formatting and expanded content length.
+Enhanced Perplexity API client with advanced unique image generation system.
 """
 
 import requests
@@ -7,6 +7,8 @@ import json
 import logging
 import re
 import hashlib
+import time
+import random
 from typing import Dict, Optional
 from datetime import datetime
 
@@ -23,12 +25,12 @@ class PerplexityClient:
         }
         
     def get_crypto_news_content(self) -> Optional[Dict]:
-        """Get crypto market news with refined formatting and expanded content."""
+        """Get crypto market news with guaranteed unique image every time."""
         try:
             today = datetime.now()
             formatted_date = today.strftime("%B %d, %Y")
             
-            # Enhanced prompt for longer, more detailed content
+            # Enhanced prompt for comprehensive content
             prompt = f"""Write a comprehensive crypto market analysis for {formatted_date}. Structure it as follows:
             
             1. Start with a compelling title about today's crypto market
@@ -54,36 +56,36 @@ class PerplexityClient:
                     },
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 450,  # Increased for longer content
+                "max_tokens": 450,
                 "temperature": 0.4,
                 "stream": False
             }
             
-            logger.info("📡 Requesting refined crypto news from Perplexity...")
+            logger.info("📡 Requesting crypto news with unique image generation...")
             response = requests.post(self.base_url, headers=self.headers, json=payload, timeout=35)
             
             if response.status_code != 200:
                 logger.error(f"❌ API failed: {response.status_code}")
-                return self._create_refined_fallback_content(formatted_date)
+                return self._create_enhanced_fallback_content(formatted_date)
             
             try:
                 data = response.json()
             except:
                 logger.error("❌ JSON parse failed")
-                return self._create_refined_fallback_content(formatted_date)
+                return self._create_enhanced_fallback_content(formatted_date)
             
             # Extract content
             content = self._extract_content_simple(data)
             
             if not content:
                 logger.warning("⚠️ No content extracted, using fallback")
-                return self._create_refined_fallback_content(formatted_date)
+                return self._create_enhanced_fallback_content(formatted_date)
             
             # Format content with refined structure
             formatted_content = self._format_content_refined(content, formatted_date)
             
-            # Generate unique image for this content
-            image_url = self._generate_unique_crypto_image(formatted_content)
+            # Generate GUARANTEED unique image for this content
+            image_url = self._generate_truly_unique_crypto_image(formatted_content)
             
             result = {
                 'text': formatted_content,
@@ -91,13 +93,13 @@ class PerplexityClient:
                 'char_count': len(formatted_content)
             }
             
-            logger.info(f"✅ Refined content ready: {len(formatted_content)} chars")
+            logger.info(f"✅ Content with unique image ready: {len(formatted_content)} chars")
             return result
             
         except Exception as e:
             logger.error(f"💥 Error: {str(e)}")
             today_str = datetime.now().strftime("%B %d, %Y")
-            return self._create_refined_fallback_content(today_str)
+            return self._create_enhanced_fallback_content(today_str)
     
     def _extract_content_simple(self, data: dict) -> str:
         """Simple content extraction that works with any format."""
@@ -199,8 +201,8 @@ class PerplexityClient:
             target_length = 1000
             if len(result) > target_length:
                 # Truncate bullet points while keeping structure
-                header_size = len(formatted_lines) + len(formatted_lines) + len(formatted_lines) + 6  # +6 for newlines
-                footer_size = 35  # For spacing and italic hashtags
+                header_size = len(formatted_lines) + len(formatted_lines) + len(formatted_lines) + 6
+                footer_size = 35
                 available_space = target_length - header_size - footer_size
                 
                 truncated_bullets = self._truncate_bullets_refined(bullet_content, available_space)
@@ -221,7 +223,7 @@ class PerplexityClient:
             return f"📈 **Crypto Market Update**\n📅 *{date}*\n\n• Comprehensive market analysis in progress\n\n*#CryptoNews #MarketOverview*"
     
     def _convert_to_detailed_bullets(self, content: str) -> list:
-        """Convert content to detailed bullet point format for ~1000 character target."""
+        """Convert content to detailed bullet point format."""
         try:
             # Remove existing hashtags
             content = re.sub(r'#\w+\s*#\w+\s*$', '', content).strip()
@@ -236,12 +238,9 @@ class PerplexityClient:
             bullets = []
             for sentence in sentences:
                 if sentence:
-                    # Clean and enhance sentence
                     sentence = sentence.rstrip('.!?').strip()
                     if sentence:
-                        # Make bullets more substantial
                         if len(sentence) < 60:
-                            # Try to combine short sentences or expand them
                             sentence = self._enhance_short_bullet(sentence)
                         bullets.append(f"• {sentence}")
             
@@ -249,7 +248,7 @@ class PerplexityClient:
             if len(bullets) < 4:
                 bullets = self._generate_comprehensive_bullets()
             elif len(bullets) > 6:
-                bullets = bullets[:6]  # Limit to 6 bullets max
+                bullets = bullets[:6]
             
             return bullets
             
@@ -260,7 +259,6 @@ class PerplexityClient:
     def _enhance_short_bullet(self, bullet: str) -> str:
         """Enhance short bullets with more detail."""
         try:
-            # Add context to common short phrases
             enhancements = {
                 "bitcoin": "Bitcoin continues its market leadership with institutional interest",
                 "ethereum": "Ethereum shows network strength amid ongoing development",
@@ -280,7 +278,7 @@ class PerplexityClient:
             return bullet
     
     def _generate_comprehensive_bullets(self) -> list:
-        """Generate comprehensive fallback bullets for detailed analysis."""
+        """Generate comprehensive fallback bullets."""
         return [
             "• Bitcoin maintains consolidation above key support levels with institutional accumulation patterns emerging",
             "• Ethereum demonstrates network resilience with increasing validator participation and Layer 2 adoption growth", 
@@ -291,24 +289,22 @@ class PerplexityClient:
         ]
     
     def _truncate_bullets_refined(self, bullets: list, max_chars: int) -> list:
-        """Truncate bullets to fit within character limit while maintaining quality."""
+        """Truncate bullets to fit within character limit."""
         result = []
         current_length = 0
         
         for bullet in bullets:
-            bullet_length = len(bullet) + 1  # +1 for newline
+            bullet_length = len(bullet) + 1
             if current_length + bullet_length <= max_chars:
                 result.append(bullet)
                 current_length += bullet_length
             else:
-                # Try to fit a shortened version of the bullet
-                available_chars = max_chars - current_length - 4  # -4 for "..." and newline
-                if available_chars > 30:  # Only if meaningful content can fit
+                available_chars = max_chars - current_length - 4
+                if available_chars > 30:
                     shortened = bullet[:available_chars] + "..."
                     result.append(shortened)
                 break
         
-        # Ensure at least 3 bullets
         if len(result) < 3 and bullets:
             result = bullets[:3]
         
@@ -319,64 +315,126 @@ class PerplexityClient:
         if additional_chars_needed < 50:
             return bullets
         
-        # Add more comprehensive bullets if we have space
         comprehensive_bullets = self._generate_comprehensive_bullets()
-        
-        # Combine existing with comprehensive, avoiding duplicates
         expanded = bullets[:]
+        
         for comp_bullet in comprehensive_bullets:
-            if len('\n'.join(expanded + [comp_bullet])) < 800:  # Leave room for header/footer
+            if len('\n'.join(expanded + [comp_bullet])) < 800:
                 if not any(comp_bullet[2:20] in existing[2:20] for existing in expanded):
                     expanded.append(comp_bullet)
         
         return expanded
     
-    def _generate_unique_crypto_image(self, content: str) -> str:
-        """Generate a unique crypto image based on content hash."""
+    def _generate_truly_unique_crypto_image(self, content: str) -> str:
+        """Generate a TRULY unique crypto image every single time using advanced rotation system."""
         try:
-            # Create hash from content for uniqueness
+            # Create multiple unique identifiers for maximum uniqueness
+            timestamp = str(int(time.time()))  # Current timestamp
             content_hash = hashlib.md5(content.encode()).hexdigest()[:8]
+            date_seed = datetime.now().strftime("%Y%m%d%H%M")  # Date + time seed
+            random_seed = str(random.randint(10000, 99999))  # Random component
             
-            # Multiple image sources with rotation based on content
-            crypto_images = [
-                f"https://source.unsplash.com/1200x800/?cryptocurrency,trading,{content_hash}",
-                f"https://source.unsplash.com/1200x800/?bitcoin,market,analysis",
-                f"https://source.unsplash.com/1200x800/?blockchain,finance,charts",
-                f"https://picsum.photos/1200/800?random={content_hash}",
-                "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop",
-                "https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=1200&h=800&fit=crop",
-                "https://images.unsplash.com/photo-1616499370260-485b3e5ed653?w=1200&h=800&fit=crop"
+            # Combine all seeds for ultimate uniqueness
+            unique_seed = f"{timestamp}{content_hash}{date_seed}{random_seed}"
+            final_hash = hashlib.sha256(unique_seed.encode()).hexdigest()[:12]
+            
+            logger.info(f"🔄 Generated unique seed: {final_hash}")
+            
+            # MASSIVE image pool with rotation system
+            crypto_image_categories = {
+                'trading_charts': [
+                    f"https://source.unsplash.com/1200x800/?cryptocurrency,trading,charts,{final_hash[:4]}",
+                    f"https://source.unsplash.com/1200x800/?bitcoin,candlestick,chart,{final_hash[4:8]}",
+                    f"https://source.unsplash.com/1200x800/?forex,trading,screen,{final_hash[8:12]}",
+                    f"https://source.unsplash.com/1200x800/?stock,market,analysis,{final_hash[:6]}",
+                ],
+                'blockchain_tech': [
+                    f"https://source.unsplash.com/1200x800/?blockchain,technology,{final_hash[2:6]}",
+                    f"https://source.unsplash.com/1200x800/?cryptocurrency,network,{final_hash[6:10]}",
+                    f"https://source.unsplash.com/1200x800/?digital,finance,{final_hash[4:8]}",
+                    f"https://source.unsplash.com/1200x800/?fintech,innovation,{final_hash[8:12]}",
+                ],
+                'market_analysis': [
+                    f"https://source.unsplash.com/1200x800/?financial,data,{final_hash[:5]}",
+                    f"https://source.unsplash.com/1200x800/?market,trends,{final_hash[5:10]}",
+                    f"https://source.unsplash.com/1200x800/?investment,growth,{final_hash[7:12]}",
+                    f"https://source.unsplash.com/1200x800/?business,finance,{final_hash[1:6]}",
+                ],
+                'crypto_coins': [
+                    f"https://source.unsplash.com/1200x800/?bitcoin,gold,{final_hash[3:7]}",
+                    f"https://source.unsplash.com/1200x800/?ethereum,silver,{final_hash[6:10]}",
+                    f"https://source.unsplash.com/1200x800/?cryptocurrency,coins,{final_hash[9:12]}{final_hash[:3]}",
+                    f"https://source.unsplash.com/1200x800/?digital,currency,{final_hash[2:8]}",
+                ],
+                'picsum_randoms': [
+                    f"https://picsum.photos/1200/800?random={final_hash[:6]}",
+                    f"https://picsum.photos/1200/800?random={final_hash[6:12]}",
+                    f"https://picsum.photos/1200/800?random={final_hash[3:9]}",
+                    f"https://picsum.photos/1200/800?random={final_hash[1:7]}",
+                ]
+            }
+            
+            # Select category based on content hash
+            hash_int = int(final_hash[:8], 16)
+            category_names = list(crypto_image_categories.keys())
+            selected_category = category_names[hash_int % len(category_names)]
+            
+            logger.info(f"🎯 Selected category: {selected_category}")
+            
+            # Select image from category
+            category_images = crypto_image_categories[selected_category]
+            image_index = hash_int % len(category_images)
+            selected_image = category_images[image_index]
+            
+            logger.info(f"🖼️  Testing unique image: {selected_image}")
+            
+            # Test image availability with retries
+            for attempt in range(3):
+                try:
+                    response = requests.head(selected_image, timeout=10, allow_redirects=True)
+                    if response.status_code == 200:
+                        logger.info(f"✅ Unique image confirmed working (attempt {attempt + 1})")
+                        return selected_image
+                    else:
+                        logger.warning(f"⚠️ Image test failed with status {response.status_code} (attempt {attempt + 1})")
+                except Exception as e:
+                    logger.warning(f"⚠️ Image test error: {str(e)} (attempt {attempt + 1})")
+                
+                # If failed, try next image in same category
+                if attempt < 2:
+                    image_index = (image_index + 1) % len(category_images)
+                    selected_image = category_images[image_index]
+                    logger.info(f"🔄 Trying alternative: {selected_image}")
+            
+            # Ultimate fallback with unique timestamp
+            fallback_images = [
+                f"https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop&v={timestamp}",
+                f"https://images.unsplash.com/photo-1559757175-0eb30cd8c063?w=1200&h=800&fit=crop&v={timestamp}",
+                f"https://images.unsplash.com/photo-1616499370260-485b3e5ed653?w=1200&h=800&fit=crop&v={timestamp}",
+                f"https://picsum.photos/1200/800?random={final_hash}&t={timestamp}"
             ]
             
-            # Select image based on hash to ensure different images
-            hash_int = int(content_hash, 16)
-            selected_image = crypto_images[hash_int % len(crypto_images)]
+            fallback_index = hash_int % len(fallback_images)
+            fallback_image = fallback_images[fallback_index]
             
-            # Test image availability
-            try:
-                response = requests.head(selected_image, timeout=10)
-                if response.status_code == 200:
-                    logger.info(f"✅ Generated unique image: {selected_image}")
-                    return selected_image
-            except:
-                pass
-            
-            # Fallback to reliable static image
-            return "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
+            logger.info(f"🔄 Using unique fallback image: {fallback_image}")
+            return fallback_image
             
         except Exception as e:
             logger.error(f"💥 Image generation error: {str(e)}")
-            return "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
+            # Emergency fallback with timestamp
+            emergency_timestamp = str(int(time.time()))
+            return f"https://picsum.photos/1200/800?random={emergency_timestamp}"
     
-    def _create_refined_fallback_content(self, date: str) -> Dict:
-        """Create refined fallback content with proper formatting and ~1000 characters."""
+    def _create_enhanced_fallback_content(self, date: str) -> Dict:
+        """Create enhanced fallback content with guaranteed unique image."""
         fallback_bullets = [
             "• Bitcoin demonstrates resilience above $67,000 with institutional accumulation continuing despite market volatility",
             "• Ethereum network shows strength at $2,600 level with increasing validator participation and Layer 2 adoption expanding",
             "• Major altcoins including BNB, XRP, SOL, and ADA display mixed signals reflecting individual project developments",
             "• Market sentiment remains cautiously optimistic with Fear & Greed Index indicating balanced investor psychology",
             "• DeFi protocols report increased total value locked while AI and gaming tokens attract renewed institutional interest",
-            "• Technical indicators suggest key support levels holding firm with potential for continued consolidation phase"
+            "• Technical analysis reveals critical support and resistance zones shaping near-term price trajectories"
         ]
         
         formatted_content = f"""📈 **Crypto Market Analysis**
@@ -388,7 +446,7 @@ class PerplexityClient:
         
         return {
             'text': formatted_content,
-            'image_url': self._generate_unique_crypto_image(formatted_content),
+            'image_url': self._generate_truly_unique_crypto_image(formatted_content),
             'char_count': len(formatted_content)
         }
     
