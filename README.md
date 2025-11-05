@@ -202,13 +202,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Issues**: [GitHub Issues](https://github.com/TriggerZzz/crypto-news-bot/issues)
 - **Discussions**: [GitHub Discussions](https://github.com/TriggerZzz/crypto-news-bot/discussions)
-- **Telegram**: [@channel1700UTC](https://t.me/channel1700UTC) - See the bot in action!
 
 ---
 
 <div align="center">
 
-**Made with ❤️ for the crypto community**
+**Made with ❤️ for the Binance Angel Dev crypto community**
 
 [⭐ Star this repo](https://github.com/TriggerZzz/crypto-news-bot) • [🐛 Report Bug](https://github.com/TriggerZzz/crypto-news-bot/issues) • [✨ Request Feature](https://github.com/TriggerZzz/crypto-news-bot/issues)
 
