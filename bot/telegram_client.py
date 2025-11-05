@@ -1,5 +1,5 @@
 """
-Enhanced Telegram client with improved formatting support.
+Refined Telegram client with updated formatting support for italic hashtags.
 """
 
 import requests
@@ -14,10 +14,10 @@ class TelegramClient:
         self.base_url = f"https://api.telegram.org/bot{bot_token}"
         
     def send_content(self, text: str, image_url: str = None) -> bool:
-        """Send enhanced formatted content to Telegram."""
+        """Send refined formatted content to Telegram."""
         try:
             # Format text for Telegram with proper parsing
-            formatted_text = self._format_for_telegram(text)
+            formatted_text = self._format_for_telegram_refined(text)
             
             if image_url:
                 return self._send_photo(formatted_text, image_url)
@@ -28,34 +28,23 @@ class TelegramClient:
             logger.error(f"💥 Send error: {str(e)}")
             return False
     
-    def _format_for_telegram(self, text: str) -> str:
-        """Format text with Telegram-specific formatting."""
+    def _format_for_telegram_refined(self, text: str) -> str:
+        """Format text with refined Telegram-specific formatting."""
         try:
-            # Convert markdown-style formatting to Telegram format
+            # The text already has the correct formatting with italic hashtags
             formatted = text
             
-            # Handle bold text (keep existing **)
-            # Handle bullet points (already using •)
-            # Handle dates and titles (keep existing formatting)
-            
-            # Ensure proper line spacing for hashtags
+            # Ensure proper line spacing (already handled in perplexity_client)
             lines = formatted.split('\n')
             
-            # Find hashtags and ensure proper spacing
-            hashtag_index = -1
+            # Verify hashtags are properly formatted as italic
             for i, line in enumerate(lines):
-                if line.strip().startswith('#'):
-                    hashtag_index = i
-                    break
-            
-            if hashtag_index > 0:
-                # Ensure two empty lines before hashtags
-                while hashtag_index > 0 and lines[hashtag_index - 1].strip() == "":
-                    hashtag_index -= 1
-                
-                # Insert proper spacing
-                lines.insert(hashtag_index, "")
-                lines.insert(hashtag_index, "")
+                if line.strip().startswith('*#') and line.strip().endswith('*'):
+                    # Hashtags are already in italic format
+                    continue
+                elif line.strip().startswith('#'):
+                    # Convert regular hashtags to italic
+                    lines[i] = f"*{line.strip()}*"
             
             return '\n'.join(lines)
             
@@ -64,23 +53,23 @@ class TelegramClient:
             return text
     
     def _send_photo(self, caption: str, image_url: str) -> bool:
-        """Send photo with formatted caption."""
+        """Send photo with refined formatted caption."""
         try:
             url = f"{self.base_url}/sendPhoto"
             data = {
                 'chat_id': self.chat_id,
                 'photo': image_url,
                 'caption': caption,
-                'parse_mode': 'Markdown'  # Enable Markdown parsing
+                'parse_mode': 'Markdown'  # Enable Markdown parsing for italic hashtags
             }
             
-            logger.info("📤 Sending photo with enhanced formatting...")
+            logger.info("📤 Sending photo with refined formatting...")
             response = requests.post(url, data=data, timeout=30)
             
             if response.status_code == 200:
                 result = response.json()
                 if result.get('ok'):
-                    logger.info("✅ Enhanced photo sent successfully")
+                    logger.info("✅ Refined photo sent successfully")
                     return True
                 else:
                     logger.warning(f"⚠️ Photo API returned: {result}")
@@ -93,22 +82,22 @@ class TelegramClient:
             return self._send_message(caption)
     
     def _send_message(self, text: str) -> bool:
-        """Send formatted text message."""
+        """Send refined formatted text message."""
         try:
             url = f"{self.base_url}/sendMessage"
             data = {
                 'chat_id': self.chat_id,
                 'text': text,
-                'parse_mode': 'Markdown'  # Enable Markdown parsing
+                'parse_mode': 'Markdown'  # Enable Markdown parsing for italic hashtags
             }
             
-            logger.info("📤 Sending enhanced text message...")
+            logger.info("📤 Sending refined text message...")
             response = requests.post(url, data=data, timeout=30)
             
             if response.status_code == 200:
                 result = response.json()
                 if result.get('ok'):
-                    logger.info("✅ Enhanced message sent successfully")
+                    logger.info("✅ Refined message sent successfully")
                     return True
                 else:
                     logger.warning(f"⚠️ Message API returned: {result}")
