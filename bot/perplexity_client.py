@@ -1,5 +1,5 @@
 """
-Refined Perplexity API client with updated formatting and expanded content length.
+Refined Perplexity API client with updated prompt specification.
 """
 
 import requests
@@ -23,43 +23,31 @@ class PerplexityClient:
         }
         
     def get_crypto_news_content(self) -> Optional[Dict]:
-        """Get crypto market news with refined formatting and expanded content."""
+        """Get crypto market news with NEW prompt specification."""
         try:
             today = datetime.now()
             formatted_date = today.strftime("%B %d, %Y")
             
-            # Enhanced prompt for longer, more detailed content
-            prompt = f"""Write a comprehensive crypto market analysis for {formatted_date}. Structure it as follows:
-            
-            1. Start with a compelling title about today's crypto market
-            2. Write 5-6 detailed bullet points covering:
-               - Bitcoin price analysis with technical indicators and percentage changes
-               - Ethereum performance, network developments, and market dynamics
-               - Top 3-5 altcoin performances with specific price movements
-               - Market sentiment analysis and fear/greed indicators
-               - Regulatory developments, institutional news, or market catalysts
-               - Technical analysis insights and key support/resistance levels
-            
-            Make each bullet point substantial with specific data, percentages, and insights.
-            Target total length around 950-980 characters including spaces.
-            Use engaging, professional financial language with specific metrics.
-            End with: #CryptoNews #MarketOverview"""
+            # NEW PROMPT - Updated as per user specification
+            prompt = f"""Summarize today's top global news about crypto market. Include major global economic events, and highlight any breaking news about near future events. Make an article no more than 800 characters (with spaces). Don't provide any guidance for the market trend.
+
+Today's date: {formatted_date}"""
 
             payload = {
                 "model": "sonar-pro",
                 "messages": [
                     {
                         "role": "system",
-                        "content": "You are a senior crypto market analyst. Write detailed, data-rich market summaries with specific prices, percentages, and technical analysis. Focus on comprehensive market coverage with actionable insights. Be thorough and professional."
+                        "content": "You are a professional crypto news reporter. Provide factual market summaries focused on news and events. Report what happened and what's upcoming without offering market predictions or investment guidance."
                     },
                     {"role": "user", "content": prompt}
                 ],
-                "max_tokens": 450,  # Increased for longer content
-                "temperature": 0.4,
+                "max_tokens": 350,  # Adjusted for 800 character target
+                "temperature": 0.3,  # Lower for more factual reporting
                 "stream": False
             }
             
-            logger.info("📡 Requesting refined crypto news from Perplexity...")
+            logger.info("📡 Requesting crypto news with updated prompt specification...")
             response = requests.post(self.base_url, headers=self.headers, json=payload, timeout=35)
             
             if response.status_code != 200:
@@ -79,7 +67,7 @@ class PerplexityClient:
                 logger.warning("⚠️ No content extracted, using fallback")
                 return self._create_refined_fallback_content(formatted_date)
             
-            # Format content with refined structure
+            # Format content with EXISTING refined structure (unchanged)
             formatted_content = self._format_content_refined(content, formatted_date)
             
             # Generate unique image for this content
@@ -91,7 +79,7 @@ class PerplexityClient:
                 'char_count': len(formatted_content)
             }
             
-            logger.info(f"✅ Refined content ready: {len(formatted_content)} chars")
+            logger.info(f"✅ Content with updated prompt ready: {len(formatted_content)} chars")
             return result
             
         except Exception as e:
@@ -152,7 +140,7 @@ class PerplexityClient:
             return ""
     
     def _format_content_refined(self, content: str, date: str) -> str:
-        """Format content with refined structure - 1 line spacing and italic hashtags."""
+        """Format content with refined structure - UNCHANGED from refined version."""
         try:
             # Clean citations and extra formatting
             clean_content = re.sub(r'\[\d+\]', '', content)
@@ -176,18 +164,18 @@ class PerplexityClient:
             if not title:
                 title = f"🚀 Crypto Market Update"
             
-            # Create formatted structure
+            # Create formatted structure - UNCHANGED
             formatted_lines = [
                 f"📈 **{title}**",
                 f"📅 *{date}*",
                 "",  # Empty line after header
             ]
             
-            # Convert content to detailed bullet points
+            # Convert content to detailed bullet points - UNCHANGED
             bullet_content = self._convert_to_detailed_bullets(body_content)
             formatted_lines.extend(bullet_content)
             
-            # Add refined spacing before hashtags (1 line instead of 2)
+            # Add refined spacing before hashtags (1 line) - UNCHANGED
             formatted_lines.extend([
                 "",  # Single empty line
                 "*#CryptoNews #MarketOverview*"  # Italic hashtags
@@ -195,12 +183,12 @@ class PerplexityClient:
             
             result = '\n'.join(formatted_lines)
             
-            # Ensure around 1000 characters
+            # Ensure around 1000 characters - UNCHANGED
             target_length = 1000
             if len(result) > target_length:
                 # Truncate bullet points while keeping structure
-                header_size = len(formatted_lines) + len(formatted_lines) + len(formatted_lines) + 6  # +6 for newlines
-                footer_size = 35  # For spacing and italic hashtags
+                header_size = len(formatted_lines) + len(formatted_lines) + len(formatted_lines) + 6
+                footer_size = 35
                 available_space = target_length - header_size - footer_size
                 
                 truncated_bullets = self._truncate_bullets_refined(bullet_content, available_space)
@@ -221,7 +209,7 @@ class PerplexityClient:
             return f"📈 **Crypto Market Update**\n📅 *{date}*\n\n• Comprehensive market analysis in progress\n\n*#CryptoNews #MarketOverview*"
     
     def _convert_to_detailed_bullets(self, content: str) -> list:
-        """Convert content to detailed bullet point format for ~1000 character target."""
+        """Convert content to detailed bullet point format - UNCHANGED."""
         try:
             # Remove existing hashtags
             content = re.sub(r'#\w+\s*#\w+\s*$', '', content).strip()
@@ -241,7 +229,6 @@ class PerplexityClient:
                     if sentence:
                         # Make bullets more substantial
                         if len(sentence) < 60:
-                            # Try to combine short sentences or expand them
                             sentence = self._enhance_short_bullet(sentence)
                         bullets.append(f"• {sentence}")
             
@@ -249,7 +236,7 @@ class PerplexityClient:
             if len(bullets) < 4:
                 bullets = self._generate_comprehensive_bullets()
             elif len(bullets) > 6:
-                bullets = bullets[:6]  # Limit to 6 bullets max
+                bullets = bullets[:6]
             
             return bullets
             
@@ -258,9 +245,8 @@ class PerplexityClient:
             return self._generate_comprehensive_bullets()
     
     def _enhance_short_bullet(self, bullet: str) -> str:
-        """Enhance short bullets with more detail."""
+        """Enhance short bullets with more detail - UNCHANGED."""
         try:
-            # Add context to common short phrases
             enhancements = {
                 "bitcoin": "Bitcoin continues its market leadership with institutional interest",
                 "ethereum": "Ethereum shows network strength amid ongoing development",
@@ -280,7 +266,7 @@ class PerplexityClient:
             return bullet
     
     def _generate_comprehensive_bullets(self) -> list:
-        """Generate comprehensive fallback bullets for detailed analysis."""
+        """Generate comprehensive fallback bullets - UNCHANGED."""
         return [
             "• Bitcoin maintains consolidation above key support levels with institutional accumulation patterns emerging",
             "• Ethereum demonstrates network resilience with increasing validator participation and Layer 2 adoption growth", 
@@ -291,48 +277,44 @@ class PerplexityClient:
         ]
     
     def _truncate_bullets_refined(self, bullets: list, max_chars: int) -> list:
-        """Truncate bullets to fit within character limit while maintaining quality."""
+        """Truncate bullets to fit within character limit - UNCHANGED."""
         result = []
         current_length = 0
         
         for bullet in bullets:
-            bullet_length = len(bullet) + 1  # +1 for newline
+            bullet_length = len(bullet) + 1
             if current_length + bullet_length <= max_chars:
                 result.append(bullet)
                 current_length += bullet_length
             else:
-                # Try to fit a shortened version of the bullet
-                available_chars = max_chars - current_length - 4  # -4 for "..." and newline
-                if available_chars > 30:  # Only if meaningful content can fit
+                available_chars = max_chars - current_length - 4
+                if available_chars > 30:
                     shortened = bullet[:available_chars] + "..."
                     result.append(shortened)
                 break
         
-        # Ensure at least 3 bullets
         if len(result) < 3 and bullets:
             result = bullets[:3]
         
         return result
     
     def _expand_bullets(self, bullets: list, additional_chars_needed: int) -> list:
-        """Expand bullets if content is too short."""
+        """Expand bullets if content is too short - UNCHANGED."""
         if additional_chars_needed < 50:
             return bullets
         
-        # Add more comprehensive bullets if we have space
         comprehensive_bullets = self._generate_comprehensive_bullets()
-        
-        # Combine existing with comprehensive, avoiding duplicates
         expanded = bullets[:]
+        
         for comp_bullet in comprehensive_bullets:
-            if len('\n'.join(expanded + [comp_bullet])) < 800:  # Leave room for header/footer
+            if len('\n'.join(expanded + [comp_bullet])) < 800:
                 if not any(comp_bullet[2:20] in existing[2:20] for existing in expanded):
                     expanded.append(comp_bullet)
         
         return expanded
     
     def _generate_unique_crypto_image(self, content: str) -> str:
-        """Generate a unique crypto image based on content hash."""
+        """Generate a unique crypto image based on content hash - UNCHANGED."""
         try:
             # Create hash from content for uniqueness
             content_hash = hashlib.md5(content.encode()).hexdigest()[:8]
@@ -369,14 +351,14 @@ class PerplexityClient:
             return "https://images.unsplash.com/photo-1640340434855-6084b1f4901c?w=1200&h=800&fit=crop"
     
     def _create_refined_fallback_content(self, date: str) -> Dict:
-        """Create refined fallback content with proper formatting and ~1000 characters."""
+        """Create refined fallback content - UNCHANGED formatting."""
         fallback_bullets = [
-            "• Bitcoin demonstrates resilience above $67,000 with institutional accumulation continuing despite market volatility",
-            "• Ethereum network shows strength at $2,600 level with increasing validator participation and Layer 2 adoption expanding",
-            "• Major altcoins including BNB, XRP, SOL, and ADA display mixed signals reflecting individual project developments",
-            "• Market sentiment remains cautiously optimistic with Fear & Greed Index indicating balanced investor psychology",
-            "• DeFi protocols report increased total value locked while AI and gaming tokens attract renewed institutional interest",
-            "• Technical indicators suggest key support levels holding firm with potential for continued consolidation phase"
+            "• Bitcoin trading activity continues with notable institutional transactions reported",
+            "• Ethereum network updates and Layer 2 scaling solutions see increased adoption",
+            "• Major altcoins display varied performance across different market segments",
+            "• Global economic indicators and central bank policies influence crypto market sentiment",
+            "• Regulatory developments in key jurisdictions impact trading volumes and market access",
+            "• Upcoming industry events and protocol upgrades scheduled for near-term implementation"
         ]
         
         formatted_content = f"""📈 **Crypto Market Analysis**
@@ -393,7 +375,7 @@ class PerplexityClient:
         }
     
     def test_connection(self) -> bool:
-        """Simple connection test."""
+        """Simple connection test - UNCHANGED."""
         try:
             payload = {
                 "model": "sonar-pro",
@@ -412,5 +394,5 @@ class PerplexityClient:
             return False
     
     def get_daily_content(self, topic: str) -> Optional[Dict]:
-        """Compatibility method."""
+        """Compatibility method - UNCHANGED."""
         return self.get_crypto_news_content()
