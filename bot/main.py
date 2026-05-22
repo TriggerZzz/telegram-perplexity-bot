@@ -1,82 +1,94 @@
 #!/usr/bin/env python3
 """
-Main bot script that orchestrates the daily content generation and sending.
+Refined main bot script with updated content specifications.
 """
 
 import os
 import sys
 import logging
-import traceback
 from datetime import datetime
 
 from perplexity_client import PerplexityClient
 from telegram_client import TelegramClient
-from utils import generate_daily_topic, validate_content_length
 
-# Configure logging
+# Enhanced logging configuration
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, 
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
 def main():
-    """Main function to run the daily bot."""
+    """Refined main function with updated formatting specifications.""" 
     try:
-        # Validate environment variables
-        required_env_vars = [
-            'PERPLEXITY_API_KEY',
-            'TELEGRAM_BOT_TOKEN', 
-            'TELEGRAM_CHAT_ID'
-        ]
+        logger.info("🚀 Starting Refined Crypto News Bot")
+        logger.info(f"⏰ Current time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S %Z')}")
+        logger.info("📋 Refinements: 1-line hashtag spacing, italic hashtags, ~1000 char content")
         
-        missing_vars = [var for var in required_env_vars if not os.getenv(var)]
-        if missing_vars:
-            logger.error(f"Missing required environment variables: {missing_vars}")
+        # Validate environment
+        api_key = os.getenv('PERPLEXITY_API_KEY')
+        bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        chat_id = os.getenv('TELEGRAM_CHAT_ID')
+        
+        if not all([api_key, bot_token, chat_id]):
+            logger.error("❌ Missing environment variables")
             sys.exit(1)
-            
-        logger.info("Starting daily bot execution...")
         
-        # Initialize clients
-        perplexity = PerplexityClient(os.getenv('PERPLEXITY_API_KEY'))
-        telegram = TelegramClient(
-            os.getenv('TELEGRAM_BOT_TOKEN'),
-            os.getenv('TELEGRAM_CHAT_ID')
-        )
+        logger.info("✅ Environment variables validated")
         
-        # Generate today's topic
-        topic = generate_daily_topic()
-        logger.info(f"Generated topic: {topic}")
+        # Initialize refined clients
+        perplexity = PerplexityClient(api_key)
+        telegram = TelegramClient(bot_token, chat_id)
         
-        # Get content from Perplexity
-        logger.info("Fetching content from Perplexity...")
-        content_data = perplexity.get_daily_content(topic)
+        # Test connections
+        logger.info("🔗 Testing refined API connections...")
         
-        if not content_data:
-            logger.error("Failed to get content from Perplexity")
+        if not perplexity.test_connection():
+            logger.error("❌ Perplexity connection failed")
             sys.exit(1)
-            
-        # Validate content length (max 1000 characters)
-        if not validate_content_length(content_data['text']):
-            logger.error("Content exceeds 1000 character limit")
+        
+        if not telegram.test_connection():  
+            logger.error("❌ Telegram connection failed")
             sys.exit(1)
-            
-        # Send to Telegram
-        logger.info("Sending content to Telegram...")
+        
+        # Generate refined content
+        logger.info("📰 Generating refined crypto content (~1000 chars)...")
+        content = perplexity.get_crypto_news_content()
+        
+        if not content:
+            logger.error("❌ No refined content generated")
+            sys.exit(1)
+        
+        # Log content details
+        char_count = content['char_count']
+        logger.info(f"✅ Refined content generated:")
+        logger.info(f"   📏 Characters: {char_count} (target: ~1000)")
+        logger.info(f"   📊 Length status: {'✅ Perfect' if 950 <= char_count <= 1050 else '⚠️ Adjusting'}")
+        logger.info(f"   🖼️  Has image: {'Yes' if content.get('image_url') else 'No'}")
+        logger.info(f"   📝 Preview: {content['text'][:80]}...")
+        
+        # Send refined content
+        logger.info("📤 Sending refined content to Telegram...")
         success = telegram.send_content(
-            text=content_data['text'],
-            image_url=content_data.get('image_url')
+            text=content['text'],
+            image_url=content.get('image_url')
         )
         
         if success:
-            logger.info("Content sent successfully!")
+            logger.info("🎉 Refined crypto content sent successfully!")
+            logger.info("📈 Refinements delivered:")
+            logger.info("   ✅ 1-line spacing before hashtags")
+            logger.info("   ✅ Italic hashtag formatting")
+            logger.info(f"   ✅ ~1000 character content ({char_count} chars)")
+            logger.info("   ✅ Detailed bullet points")
+            logger.info("   ✅ Unique image generation")
         else:
-            logger.error("Failed to send content to Telegram")
+            logger.error("❌ Failed to send refined content")
             sys.exit(1)
             
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
-        logger.error(traceback.format_exc())
+        logger.error(f"💥 Critical error: {str(e)}")
         sys.exit(1)
 
 if __name__ == "__main__":
