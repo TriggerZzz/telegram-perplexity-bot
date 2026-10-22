@@ -19,7 +19,8 @@ class PerplexityClient:
         self.headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
-            "Accept": "application/json"
+            "Accept": "application/json",
+            "X-Pplx-Integration": "telegram-perplexity-bot"
         }
         
     def get_crypto_news_content(self) -> Optional[Dict]:
